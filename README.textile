@@ -5,13 +5,13 @@ Website/Contact: http://www.billkatz.com
 
 h2. Some ideas
 
-Test entry by Scott Chacon recommends repos based on other users' watch lists
-that are similar.  He got a good 16.47%
+Test entry by Scott Chacon recommends repos based on other users' watch lists that are similar.  Result: 16.47%
 
 Played with the following ideas:
 
 # If repos follow a power law, maybe just recommending the top 10 for user's language of choice will get a high score.  Result: 5.8%
 # Like above but only consider repos that are mostly in one type of language.  Result: 7.6%
+# Emphasize repos watched by cowatchers.  Result: 18.48%
 
 TODO: Try real machine learning approaches.
 
