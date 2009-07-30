@@ -50,6 +50,18 @@ def get_n_repos(id_list, n, exclude=[]):
                 break
     return n_id_list
 
+
+def extend_to_n_repos(id_list, extend_list, n, exclude=[]):
+    n_id_list = list(id_list)
+    elems = len(n_id_list)
+    for repo_id in extend_list:
+        if elems >= n:
+            break
+        if (repo_id not in exclude) and (repo_id not in n_id_list):
+            n_id_list.append(repo_id)
+            elems += 1
+    return n_id_list
+
 def repo_info(repo_id):
     global repo_data
     if not repo_id:
@@ -138,7 +150,7 @@ try:
                 if lang:
                     languages[lang] = languages.get(lang, 0) + 1
             if not languages:
-                best_repos = get_n_repos(default_best_repos, n=N,
+                best_repos = get_n_repos(default_best_repos, N,
                                          exclude=user_watching[user_id])
             else:
                 lang_list = languages.items()
@@ -146,22 +158,23 @@ try:
 
                 lang, times = lang_list[0]
                 if times == 0:
-                    best_repos = get_n_repos(default_best_repos, n=N,
+                    best_repos = get_n_repos(default_best_repos, N,
                                              exclude=user_watching[user_id])
                 else:
                     favorite_languages[lang] = favorite_languages.get(lang, 0) + 1
                     # Go through user's language in descending popularity
-                    # and find top repos until we get at least N.
                     best_repos = []
                     num = 0
                     for lang_data in lang_list:
                         lang, times = lang_data
-                        for repo_id in language_top_repos[lang]:
-                            if (repo_id not in best_repos) and \
-                               (repo_id not in user_watching[user_id]):
-                                best_repos.append(repo_id)
-                                if len(best_repos) >= N:
-                                    break
+                        if times > 0:
+                            best_repos = extend_to_n_repos(best_repos, 
+                                language_top_repos[lang], N, 
+                                exclude=user_watching[user_id])
+                    if len(best_repos) < N:
+                        best_repos = extend_to_n_repos(best_repos, 
+                            default_best_repos, N, 
+                            exclude=user_watching[user_id])
         result_file.write("%s:%s\n" % (user_id, ','.join(best_repos)))
 finally:
     result_file.close()
