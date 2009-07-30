@@ -20,7 +20,7 @@ DEFAULT_NUM_LINES = 1000
 
 user_watching = {}      # Key: user id => Value: list of repo ids
 repo_data = {}          # Key: repo id => Value: (username, repo name, primary language, fork repo id)
-repo_headcount = {}     # Key: repo id => Value: # of watchers
+repo_watched_by = {}    # Key: repo id => Value: list of user ids
 repo_langs = {}         # Key: repo id => Value: list of (language, # lines) tuples.
 languages = []
 language_repos = {}     # Key: language => Value: list of (repo id, # watchers)
@@ -62,6 +62,13 @@ def extend_to_n_repos(id_list, extend_list, n, exclude=[]):
             elems += 1
     return n_id_list
 
+def add_cohort_repos(cohort_repos, repo_id):
+    global repo_watched_by, user_watching
+    if repo_id in repo_watched_by:
+        for user_id in repo_watched_by[repo_id]:
+            for repo_id2 in user_watching[user_id]:
+                cohort_repos[repo_id2] = cohort_repos.get(repo_id2, 0) + 1
+
 def repo_info(repo_id):
     global repo_data
     if not repo_id:
@@ -98,12 +105,15 @@ try:
             user_watching[user_id].append(repo_id)
         else:
             user_watching[user_id] = [repo_id]
-        repo_headcount[repo_id] = (repo_headcount.get(repo_id, 0) + 1)
+        if repo_id in repo_watched_by:
+            repo_watched_by[repo_id].append(user_id)
+        else:
+            repo_watched_by[repo_id] = [user_id]
 finally:
     data_file.close()
 
 # Sort the repos in descending order of number of watchers
-repo_list = repo_headcount.items()
+repo_list = [(repo_id, len(repo_watched_by[repo_id])) for repo_id in repo_watched_by]
 repo_list.sort(key=lambda x: x[1], reverse=True)
 print "Top 10 repos:"
 for watch_data in repo_list[:10]:
@@ -120,13 +130,13 @@ for watch_data in repo_list:
     if primary_language:
         if primary_language not in language_top_repos:
             language_top_repos[primary_language] = [repo_id]
-        elif len(language_top_repos[primary_language]) < N:
+        elif len(language_top_repos[primary_language]):
             language_top_repos[primary_language].append(repo_id)
 
 print "\nTop repositories by language:"
 for lang in language_top_repos:
     print lang, "(%d)" % (len(language_top_repos[lang]))
-    for repo_id in language_top_repos[lang]:
+    for repo_id in language_top_repos[lang][:N]:
         print "-", repo_info(repo_id)
 
 # Assume there's some kind of Long Tail for repository popularity.
@@ -145,12 +155,17 @@ try:
             best_repos = default_best_repos[:N]
         else:
             languages = {}
+            cohort_repos = {}
             for repo_id in user_watching[user_id]:
                 lang = repo_data[repo_id][2]
                 if lang:
                     languages[lang] = languages.get(lang, 0) + 1
+                add_cohort_repos(cohort_repos, repo_id)
+            cohort_list = cohort_repos.items()
+            cohort_list.sort(key=lambda x: x[1], reverse=True)
+            best_cohort_repos = [x[0] for x in cohort_list]
             if not languages:
-                best_repos = get_n_repos(default_best_repos, N,
+                best_repos = get_n_repos(best_cohort_repos, N,
                                          exclude=user_watching[user_id])
             else:
                 lang_list = languages.items()
@@ -158,24 +173,34 @@ try:
 
                 lang, times = lang_list[0]
                 if times == 0:
-                    best_repos = get_n_repos(default_best_repos, N,
+                    best_repos = get_n_repos(best_cohort_repos, N,
                                              exclude=user_watching[user_id])
                 else:
                     favorite_languages[lang] = favorite_languages.get(lang, 0) + 1
                     # Go through user's language in descending popularity
+                    # and pick from cohort repos that use that language
                     best_repos = []
                     num = 0
                     for lang_data in lang_list:
                         lang, times = lang_data
-                        if times > 0:
+                        if times < 1 or len(best_repos) >= N:
+                            break
+                        else:
+                            short_list = [repo_id for repo_id in best_cohort_repos
+                                          if repo_data[repo_id][2] == lang]
                             best_repos = extend_to_n_repos(best_repos, 
-                                language_top_repos[lang], N, 
+                                short_list, N,
                                 exclude=user_watching[user_id])
-                    if len(best_repos) < N:
-                        best_repos = extend_to_n_repos(best_repos, 
-                            default_best_repos, N, 
-                            exclude=user_watching[user_id])
+            if len(best_repos) < N:
+                best_repos = extend_to_n_repos(best_repos, 
+                    best_cohort_repos, N, 
+                    exclude=user_watching[user_id])
+            if len(best_repos) < N:
+                best_repos = extend_to_n_repos(best_repos, 
+                    default_best_repos, N, 
+                    exclude=user_watching[user_id])
         result_file.write("%s:%s\n" % (user_id, ','.join(best_repos)))
+        result_file.flush()
 finally:
     result_file.close()
     test_file.close()
