@@ -3,12 +3,23 @@ h1. Entry to 2009 GitHub Contest
 Copyright (c) 2009 William T. Katz
 Website/Contact: http://www.billkatz.com
 
----------
+h2. Some ideas
+
+Test entry by Scott Chacon recommends repos based on other users' watch lists
+that are similar.  He got a good 16.47%%
+
+Played with the following ideas:
+
+# If repos follow a power law, maybe just recommending the top 10 for user's language of choice will get a high score.  Result: 5.8%%
+
+
+
+h2. Licensing
 
 Until August 30, 2009 at noon PST, this code is distributed under 
 the following license:
 
-h2. The Inverse MIT License
+h3. The Inverse MIT License
 
 Permission is hereby not granted to any person obtaining a copy
 of this software and associated documentation files (the "Software").
@@ -31,7 +42,7 @@ AND/OR CAT AND/OR MACBOOK PRO.
 After August 30, 2009 at noon PST, this code is distributed under
 the following license:
 
-h2. The MIT License
+h3. The MIT License
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to 
