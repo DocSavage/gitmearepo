@@ -41,6 +41,15 @@ finally:
 print "Language breakdown shows %d languages: %s" % \
       (len(languages), ', '.join(languages))
 
+def get_n_repos(id_list, n, exclude=[]):
+    n_id_list = []
+    for repo_id in id_list:
+        if repo_id not in exclude:
+            n_id_list.append(repo_id)
+            if len(n_id_list) == n:
+                break
+    return n_id_list
+
 def repo_info(repo_id):
     global repo_data
     if not repo_id:
@@ -111,7 +120,7 @@ for lang in language_top_repos:
 # Assume there's some kind of Long Tail for repository popularity.
 # For each user, suggest the most popular repos for that user's
 # favorite languages.
-default_best_repos = [repo_id for repo_id, watchers in repo_list[:N]]
+default_best_repos = [repo_id for repo_id, watchers in repo_list]
 favorite_languages = {}
 non_watcher = 0
 result_file = open('results.txt', 'w')
@@ -121,7 +130,7 @@ try:
         user_id = line.strip()
         if user_id not in user_watching:
             non_watcher += 1
-            best_repos = default_best_repos
+            best_repos = default_best_repos[:N]
         else:
             languages = {}
             for repo_id in user_watching[user_id]:
@@ -129,14 +138,16 @@ try:
                 if lang:
                     languages[lang] = languages.get(lang, 0) + 1
             if not languages:
-                best_repos = default_best_repos
+                best_repos = get_n_repos(default_best_repos, n=N,
+                                         exclude=user_watching[user_id])
             else:
                 lang_list = languages.items()
                 lang_list.sort(key=lambda x: x[1], reverse=True)
 
                 lang, times = lang_list[0]
                 if times == 0:
-                    best_repos = default_best_repos
+                    best_repos = get_n_repos(default_best_repos, n=N,
+                                             exclude=user_watching[user_id])
                 else:
                     favorite_languages[lang] = favorite_languages.get(lang, 0) + 1
                     # Go through user's language in descending popularity
@@ -146,11 +157,12 @@ try:
                     for lang_data in lang_list:
                         lang, times = lang_data
                         for repo_id in language_top_repos[lang]:
-                            if repo_id not in best_repos:
+                            if (repo_id not in best_repos) and \
+                               (repo_id not in user_watching[user_id]):
                                 best_repos.append(repo_id)
                                 if len(best_repos) >= N:
                                     break
-        result_file.write("%s:%s\n" % (user_id, ','.join(best_repos[:N])))
+        result_file.write("%s:%s\n" % (user_id, ','.join(best_repos)))
 finally:
     result_file.close()
     test_file.close()
